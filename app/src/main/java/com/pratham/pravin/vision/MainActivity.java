@@ -1,9 +1,11 @@
 package com.pratham.pravin.vision;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
@@ -25,6 +27,8 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.gps_text)
     TextView gps_text;
 
+    private ProgressDialog dialog;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,21 +39,30 @@ public class MainActivity extends AppCompatActivity {
                 != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission
                 (this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
             return;
+        } else {
+            showTimeDialog();
         }
 
+    }
+
+    private void showTimeDialog() {
+        dialog = new ProgressDialog(this);
+        dialog.setMessage("Note down the time taken in getting location...");
+        dialog.setIndeterminate(true);
+        dialog.setCancelable(false);
+        dialog.show();
     }
 
     @Subscribe
     public void onEvent(Short msg) {
         if (msg == EventBusMSG.UPDATE_TRACK) {
             gps_text.setText(getDate(VisionApplication.location.getTime(), "dd/MM/yyyy hh:mm:ss.SSS"));
+            if (dialog != null) {
+                dialog.dismiss();
+            }
         }
     }
 
@@ -78,5 +91,22 @@ public class MainActivity extends AppCompatActivity {
         Calendar calendar = Calendar.getInstance();
         calendar.setTimeInMillis(milliSeconds);
         return formatter.format(calendar.getTime());
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case 1: {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    try {
+                        VisionApplication.getInstance().getLocation(MainActivity.this);
+                        showTimeDialog();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            break;
+        }
     }
 }

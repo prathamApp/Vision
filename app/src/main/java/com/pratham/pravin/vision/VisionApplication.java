@@ -28,10 +28,6 @@ public class VisionApplication extends Application implements GpsStatus.Listener
     }
 
     private static final int NOT_AVAILABLE = -100000;
-    private static final int UM_METRIC_KMH = 1;
-    private static final int DEFAULTHANDLERTIMER = 5000;        // The timer for turning off GPS on exit
-    private int StabilizingSamples = 3;
-
     private static final int GPS_DISABLED = 0;
     private static final int GPS_OUTOFSERVICE = 1;
     private static final int GPS_TEMPORARYUNAVAILABLE = 2;
@@ -44,12 +40,12 @@ public class VisionApplication extends Application implements GpsStatus.Listener
     // Singleton instance
     private static VisionApplication singleton;
     public static Location location;
+    public Context context;
 
     public static VisionApplication getInstance() {
         return singleton;
     }
 
-    private boolean Recording = false;
     private int GPSStatus = GPS_SEARCHING;
     private LocationManager mlocManager = null;             // GPS LocationManager
     private int _NumberOfSatellites = 0;
@@ -70,16 +66,23 @@ public class VisionApplication extends Application implements GpsStatus.Listener
     @Override
     public void onCreate() {
         super.onCreate();
-        mlocManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);     // Location Manager
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            mlocManager.addGpsStatusListener(this);
-            mlocManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, prefGPSupdatefrequency, 0, this); // Requires Location update
+        singleton = new VisionApplication();
+        context = this;
+        getLocation(this);
+    }
+
+    public void getLocation(Context mcontext) {
+        context = mcontext;
+        mlocManager = (LocationManager) mcontext.getSystemService(Context.LOCATION_SERVICE);     // Location Manager
+        if (ContextCompat.checkSelfPermission(mcontext, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mlocManager.addGpsStatusListener(VisionApplication.this);
+            mlocManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, prefGPSupdatefrequency, 0, VisionApplication.this); // Requires Location update
         }
     }
 
     public void updateSats() {
         try {
-            if ((mlocManager != null) && (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
+            if ((mlocManager != null) && (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED)) {
                 GpsStatus gs = mlocManager.getGpsStatus(null);
                 int sats_inview = 0;    // Satellites in view;
                 int sats_used = 0;      // Satellites used in fix;
@@ -113,7 +116,7 @@ public class VisionApplication extends Application implements GpsStatus.Listener
     public void onGpsStatusChanged(int event) {
         switch (event) {
             case GpsStatus.GPS_EVENT_SATELLITE_STATUS:
-                Log.d("gps:::","satellite");
+                Log.d("gps:::", "satellite");
                 // TODO: get here the status of the GPS, and save into a GpsStatus to be used for satellites visualization;
                 // Use GpsStatus getGpsStatus (GpsStatus status)
                 // https://developer.android.com/reference/android/location/LocationManager.html#getGpsStatus(android.location.GpsStatus)
@@ -128,7 +131,7 @@ public class VisionApplication extends Application implements GpsStatus.Listener
         //if ((loc != null) && (loc.getProvider().equals(LocationManager.GPS_PROVIDER)) {
         if (loc != null) {      // Location data is valid
             //Log.w("VisionApplication", "[#] GPSApplication.java - onLocationChanged: provider=" + loc.getProvider());
-            location=loc;
+            location = loc;
             Log.d("onLocationChanged:", "" + loc.getTime());
             Log.d("onLocationChanged:", "" + loc.getAltitude());
             Log.d("onLocationChanged:", "" + loc.getLatitude());
